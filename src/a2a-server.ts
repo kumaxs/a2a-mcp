@@ -78,7 +78,7 @@ export class InboundA2AServer {
     } catch (error) {
       if (error instanceof TaskNotFoundError) return rpcError(id, -32001, error.message);
       if (error instanceof ActiveWakeDisabledError) {
-        return rpcError(id, -32016, "ActiveWakeDisabled", {
+        return rpcError(id, -32016, "ActiveWakeDisabled: active ChatGPT wake is OFF; the inbound task was persisted, but no MCP Event webhook was sent. Enable it with a2a_set_wake_enabled before retrying.", {
           task_id: error.taskId,
           context_id: error.contextId,
           persisted: true,

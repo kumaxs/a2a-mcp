@@ -34,7 +34,7 @@ describe("bidirectional bridge", () => {
     });
     expect(envelope.error).toMatchObject({
       code: -32016,
-      message: "ActiveWakeDisabled",
+      message: expect.stringContaining("ActiveWakeDisabled: active ChatGPT wake is OFF"),
       data: {
         persisted: true,
         wake_delivery: "disabled",
