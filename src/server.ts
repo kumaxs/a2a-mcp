@@ -95,6 +95,20 @@ async function serveMcp(
   origin: string,
 ): Promise<void> {
   const body = req.method === "GET" || req.method === "HEAD" ? Buffer.alloc(0) : await readBody(req);
+  // Log only known method names: request arguments can contain messages and signing secrets.
+  let observedMethod: string | undefined;
+  try {
+    const message = JSON.parse(body.toString("utf8")) as { method?: unknown };
+    if (
+      typeof message.method === "string" &&
+      ["server/discover", "tools/list", "tools/call", "events/list", "events/subscribe", "events/unsubscribe"].includes(message.method)
+    ) {
+      observedMethod = message.method;
+      console.info(JSON.stringify({ at: new Date().toISOString(), event: "mcp.request", method: observedMethod }));
+    }
+  } catch {
+    // The protocol handler owns malformed-request errors.
+  }
   const headers = new Headers();
   for (const [name, raw] of Object.entries(req.headers)) {
     if (raw === undefined) continue;
@@ -106,6 +120,22 @@ async function serveMcp(
     init.duplex = "half";
   }
   const response = await handler.fetch(new Request(new URL(req.url ?? "/mcp", origin), init));
+  if (observedMethod) {
+    let errorCode: number | undefined;
+    let reason: string | undefined;
+    if (observedMethod.startsWith("events/") && response.headers.get("content-type")?.includes("application/json")) {
+      const envelope = await response.clone().json().catch(() => null) as {
+        error?: { code?: unknown; data?: { reason?: unknown } };
+      } | null;
+      if (typeof envelope?.error?.code === "number") errorCode = envelope.error.code;
+      const reportedReason = envelope?.error?.data?.reason;
+      if (reportedReason === "challenge_failed" || reportedReason === "timeout") reason = reportedReason;
+    }
+    console.info(JSON.stringify({
+      at: new Date().toISOString(), event: "mcp.response", method: observedMethod,
+      status: response.status, ...(errorCode !== undefined ? { errorCode } : {}), ...(reason ? { reason } : {}),
+    }));
+  }
   const outgoing: Record<string, string> = {};
   response.headers.forEach((value, name) => {
     outgoing[name] = value;

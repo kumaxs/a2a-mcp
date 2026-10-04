@@ -1,15 +1,37 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { startBridge, type BridgeConfig } from "../src/index.js";
 
 const cleanups: Array<() => Promise<void>> = [];
 afterEach(async () => {
   while (cleanups.length) await cleanups.pop()!();
+  vi.restoreAllMocks();
 });
 
 describe("bidirectional bridge", () => {
+  it("records subscription failures without logging callback credentials or arguments", async () => {
+    const logs = vi.spyOn(console, "info").mockImplementation(() => {});
+    const dataDir = await mkdtemp(path.join(os.tmpdir(), "a2a-mcp-diagnostics-"));
+    cleanups.push(() => rm(dataDir, { recursive: true, force: true }));
+    const bridge = await startBridge({
+      host: "127.0.0.1", port: 0, dataDir, agents: {}, inboundPeerTokens: {}, subscriptionTtlMs: 60_000,
+    });
+    cleanups.push(() => bridge.close());
+    const secret = "whsec_" + Buffer.alloc(32, 7).toString("base64");
+    const callback = "https://127.0.0.1/private-callback";
+    await expect(modernMcp(bridge.url + "/mcp", "events/subscribe", {
+      name: "a2a.message.received", arguments: { sender: "private-peer" },
+      delivery: { mode: "webhook", url: callback, secret },
+    }, 31)).rejects.toThrow("CallbackEndpointError");
+    const text = logs.mock.calls.map(([line]) => String(line)).join("\n");
+    expect(text).toContain('"event":"mcp.request"');
+    expect(text).toContain('"method":"events/subscribe"');
+    expect(text).toContain('"errorCode":-32015');
+    for (const privateValue of [secret, callback, "private-peer"]) expect(text).not.toContain(privateValue);
+  });
+
   it("reports ActiveWakeDisabled clearly while preserving the inbound task", async () => {
     const dataDir = await mkdtemp(path.join(os.tmpdir(), "a2a-mcp-integration-"));
     cleanups.push(() => rm(dataDir, { recursive: true, force: true }));
