@@ -28,7 +28,7 @@ function task(sender = "hermes"): InboundTaskRecord {
 }
 
 describe("MCP Events", () => {
-  it("verifies, persists and delivers signed inbound A2A events", async () => {
+  it("verifies and persists subscriptions while active wake stays off by default", async () => {
     const dir = await mkdtemp(path.join(os.tmpdir(), "a2a-mcp-events-"));
     dirs.push(dir);
     const posts: Array<{ body: string; headers: Record<string, string> }> = [];
@@ -56,15 +56,57 @@ describe("MCP Events", () => {
     expect(posts).toHaveLength(1);
     expect(posts[0]!.headers["webhook-signature"]).toBeTruthy();
 
-    // Re-open from disk to prove a restart does not lose the subscription.
     const restarted = new EventManager(dir, 60_000, transport);
+    expect(await restarted.getWakeStatus()).toMatchObject({
+      enabled: false,
+      activeSubscriptions: 1,
+      behavior: "store_only",
+    });
+    expect(await restarted.emitInboundMessage(task())).toEqual({
+      wakeEnabled: false,
+      matched: 0,
+      delivered: 0,
+    });
+    expect(posts).toHaveLength(1);
+
+    await restarted.setWakeEnabled(true);
     const result = await restarted.emitInboundMessage(task());
-    expect(result).toEqual({ matched: 1, delivered: 1 });
+    expect(result).toEqual({ wakeEnabled: true, matched: 1, delivered: 1 });
     expect(posts).toHaveLength(2);
     const event = JSON.parse(posts[1]!.body) as any;
     expect(event.name).toBe(A2A_MESSAGE_EVENT);
     expect(event.data.task_id).toBe("task-1");
     expect(posts[1]!.headers["X-MCP-Subscription-Id"]).toBe(subscription.id);
+  });
+
+  it("persists the active-wake switch independently of subscriptions", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "a2a-mcp-events-"));
+    dirs.push(dir);
+    const transport: EventTransport = {
+      async validate() {},
+      async post() {
+        throw new Error("no webhook should be called");
+      },
+    };
+
+    const first = new EventManager(dir, 60_000, transport);
+    expect((await first.getWakeStatus()).enabled).toBe(false);
+    const enabled = await first.setWakeEnabled(true);
+    expect(enabled.enabled).toBe(true);
+    expect(enabled.behavior).toBe("deliver_events");
+
+    const restarted = new EventManager(dir, 60_000, transport);
+    expect(await restarted.getWakeStatus()).toMatchObject({
+      enabled: true,
+      behavior: "deliver_events",
+    });
+
+    await restarted.setWakeEnabled(false);
+    expect(await restarted.emitInboundMessage(task())).toEqual({
+      wakeEnabled: false,
+      matched: 0,
+      delivered: 0,
+    });
   });
 
   it("applies subscription filters before delivery", async () => {
@@ -88,7 +130,12 @@ describe("MCP Events", () => {
       arguments: { sender: "other-agent" },
       delivery: { mode: "webhook", url: "https://chatgpt.example/callback", secret: secret() },
     });
-    expect(await manager.emitInboundMessage(task("hermes"))).toEqual({ matched: 0, delivered: 0 });
+    await manager.setWakeEnabled(true);
+    expect(await manager.emitInboundMessage(task("hermes"))).toEqual({
+      wakeEnabled: true,
+      matched: 0,
+      delivered: 0,
+    });
     expect(calls).toBe(0);
   });
 });

@@ -19,7 +19,7 @@ export function createBridgeMcpHandler(input: {
           "Use the a2a_* tools to discover and call remote A2A agents. " +
           "Inbound A2A messages are exposed as MCP Events named " +
           A2A_MESSAGE_EVENT +
-          ". When such an event arrives, inspect the inbound task and answer it with a2a_reply_inbound so the remote agent can retrieve the reply with A2A GetTask.",
+          ". Active wake delivery is controlled by a2a_set_wake_enabled and is disabled by default. When disabled, inbound A2A tasks are still persisted without waking ChatGPT. When an event arrives, inspect the inbound task and answer it with a2a_reply_inbound so the remote agent can retrieve the reply with A2A GetTask.",
       });
 
       // MCP Events is a ChatGPT extension to MCP 2026-07-28. The upstream
@@ -127,6 +127,32 @@ function registerTools(
       if (!task) return toolError(`Inbound task not found: ${task_id}`);
       return toolResult(toA2ATask(task));
     },
+  );
+
+
+
+  mcp.registerTool(
+    "a2a_get_wake_status",
+    {
+      title: "Get A2A wake status",
+      description:
+        "Show whether inbound A2A messages may actively wake ChatGPT through MCP Events. When disabled, inbound tasks are still persisted but no wake webhook is delivered.",
+      inputSchema: z.object({}),
+      annotations: { readOnlyHint: true },
+    },
+    async () => toolResult(await input.events.getWakeStatus()),
+  );
+
+  mcp.registerTool(
+    "a2a_set_wake_enabled",
+    {
+      title: "Set A2A active wake",
+      description:
+        "Enable or disable paid/active ChatGPT wake delivery for future inbound A2A messages. Disabled is the safe default: Hermes messages are stored as inbound tasks but do not trigger MCP Event webhooks. Existing subscriptions are preserved.",
+      inputSchema: z.object({ enabled: z.boolean() }),
+      annotations: { idempotentHint: true },
+    },
+    async ({ enabled }) => toolResult(await input.events.setWakeEnabled(enabled)),
   );
 
   mcp.registerTool(

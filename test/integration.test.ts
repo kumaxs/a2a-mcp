@@ -41,6 +41,27 @@ describe("bidirectional bridge", () => {
     const discover = await modernMcp(`${bridge.url}/mcp`, "server/discover", {}, 2);
     expect((discover as any).capabilities.events).toEqual({});
 
+    const wakeStatus = await modernMcp(
+      `${bridge.url}/mcp`,
+      "tools/call",
+      { name: "a2a_get_wake_status", arguments: {} },
+      20,
+      "a2a_get_wake_status",
+    );
+    expect((wakeStatus as any).structuredContent).toMatchObject({
+      enabled: false,
+      behavior: "store_only",
+    });
+
+    const wakeEnabled = await modernMcp(
+      `${bridge.url}/mcp`,
+      "tools/call",
+      { name: "a2a_set_wake_enabled", arguments: { enabled: true } },
+      21,
+      "a2a_set_wake_enabled",
+    );
+    expect((wakeEnabled as any).structuredContent.enabled).toBe(true);
+
     const reply = await modernMcp(
       `${bridge.url}/mcp`,
       "tools/call",

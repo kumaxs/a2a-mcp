@@ -32,6 +32,7 @@ const defaultTransport: EventTransport = {
 
 export class EventManager {
   private readonly store: JsonStore<{ subscriptions: EventSubscription[] }>;
+  private readonly wakeStore: JsonStore<{ enabled: boolean; updatedAt: string | null }>;
 
   constructor(
     dataDir: string,
@@ -40,6 +41,46 @@ export class EventManager {
     private readonly principal: string = "anonymous",
   ) {
     this.store = new JsonStore(path.join(dataDir, "subscriptions.json"), { subscriptions: [] });
+    this.wakeStore = new JsonStore(path.join(dataDir, "wake-state.json"), {
+      enabled: false,
+      updatedAt: null,
+    });
+  }
+
+  async getWakeStatus(): Promise<{
+    enabled: boolean;
+    updatedAt: string | null;
+    activeSubscriptions: number;
+    behavior: "store_only" | "deliver_events";
+  }> {
+    const [wake, subscriptionState] = await Promise.all([this.wakeStore.read(), this.store.read()]);
+    const activeSubscriptions = subscriptionState.subscriptions.filter(
+      (subscription) =>
+        !isExpired(subscription) &&
+        subscription.owner === this.principal &&
+        subscription.name === A2A_MESSAGE_EVENT,
+    ).length;
+    return {
+      enabled: wake.enabled,
+      updatedAt: wake.updatedAt,
+      activeSubscriptions,
+      behavior: wake.enabled ? "deliver_events" : "store_only",
+    };
+  }
+
+  async setWakeEnabled(enabled: boolean): Promise<{
+    enabled: boolean;
+    updatedAt: string;
+    activeSubscriptions: number;
+    behavior: "store_only" | "deliver_events";
+  }> {
+    const updatedAt = new Date().toISOString();
+    await this.wakeStore.write({ enabled, updatedAt });
+    const status = await this.getWakeStatus();
+    return {
+      ...status,
+      updatedAt,
+    };
   }
 
   definitions(): unknown[] {
@@ -116,7 +157,16 @@ export class EventManager {
     return {};
   }
 
-  async emitInboundMessage(task: InboundTaskRecord): Promise<{ matched: number; delivered: number }> {
+  async emitInboundMessage(task: InboundTaskRecord): Promise<{
+    wakeEnabled: boolean;
+    matched: number;
+    delivered: number;
+  }> {
+    const wake = await this.wakeStore.read();
+    if (!wake.enabled) {
+      return { wakeEnabled: false, matched: 0, delivered: 0 };
+    }
+
     const data = {
       task_id: task.id,
       context_id: task.contextId,
@@ -147,7 +197,7 @@ export class EventManager {
         if (await this.deliver(subscription, eventId, event)) delivered += 1;
       }),
     );
-    return { matched: matching.length, delivered };
+    return { wakeEnabled: true, matched: matching.length, delivered };
   }
 
   private subscriptionId(name: string, args: Record<string, unknown>, url: string): string {

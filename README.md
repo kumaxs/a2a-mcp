@@ -1,3 +1,5 @@
+[Reading 225 lines from start (total: 225 lines, 0 remaining)]
+
 # a2a-mcp
 
 Bidirectional **A2A ↔ MCP bridge** for ChatGPT and other MCP clients.
@@ -172,6 +174,31 @@ a2a_reply_inbound(task_id, reply)
 
 The A2A sender can then poll `GetTask(task_id)` and retrieve that exact reply.
 
+## Active wake switch
+
+MCP Events are intentionally **subscribed separately from active delivery**.
+
+The bridge defaults to:
+
+```text
+active wake: OFF
+```
+
+With wake OFF:
+
+- ChatGPT → A2A tools continue to work normally.
+- Hermes → bridge messages are still accepted and persisted as inbound A2A tasks.
+- Existing MCP Event subscriptions are preserved.
+- No MCP Event webhook is delivered, so inbound Hermes messages do not actively wake ChatGPT.
+
+Use:
+
+- `a2a_get_wake_status` to inspect the current state.
+- `a2a_set_wake_enabled({ enabled: true })` to allow future inbound A2A messages to wake subscribed ChatGPT Work chats.
+- `a2a_set_wake_enabled({ enabled: false })` to return to store-only mode.
+
+The switch is persisted across bridge restarts. Enabling it does not replay older pending tasks; it only affects future inbound messages.
+
 ## Security model
 
 - Listen on loopback unless you intentionally expose the bridge.
@@ -223,3 +250,5 @@ A2A SendMessage
 ## License
 
 Apache-2.0.
+
+[executed on device: Hermes-1.local (be49440c-1576-4e45-88f2-3b9f6aab1034)]
