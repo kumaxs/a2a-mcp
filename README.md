@@ -1,4 +1,3 @@
-[Reading 225 lines from start (total: 225 lines, 0 remaining)]
 
 # a2a-mcp
 
@@ -187,9 +186,10 @@ active wake: OFF
 With wake OFF:
 
 - ChatGPT → A2A tools continue to work normally.
-- Hermes → bridge messages are still accepted and persisted as inbound A2A tasks.
+- Hermes → bridge messages are still persisted as inbound A2A tasks.
 - Existing MCP Event subscriptions are preserved.
 - No MCP Event webhook is delivered, so inbound Hermes messages do not actively wake ChatGPT.
+- A2A `SendMessage` returns JSON-RPC error `-32016 ActiveWakeDisabled` instead of failing silently. Its error data includes `task_id`, `context_id`, `persisted: true`, and `wake_delivery: "disabled"`.
 
 Use:
 
@@ -250,5 +250,3 @@ A2A SendMessage
 ## License
 
 Apache-2.0.
-
-[executed on device: Hermes-1.local (be49440c-1576-4e45-88f2-3b9f6aab1034)]

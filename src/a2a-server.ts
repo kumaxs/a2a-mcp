@@ -30,7 +30,7 @@ export class InboundA2AServer {
           id: "contact_chatgpt",
           name: "Contact ChatGPT",
           description:
-            "Send a message that can wake a subscribed ChatGPT Work chat. Keep the returned task ID and poll GetTask for the reply.",
+            "Send a message that can wake a subscribed ChatGPT Work chat. When active wake is disabled, SendMessage returns an ActiveWakeDisabled error with the persisted task ID instead of failing silently.",
           tags: ["chatgpt", "messaging", "a2a", "mcp-events"],
           examples: ["Please review this result and tell me whether to continue."],
         },
@@ -77,6 +77,16 @@ export class InboundA2AServer {
       }
     } catch (error) {
       if (error instanceof TaskNotFoundError) return rpcError(id, -32001, error.message);
+      if (error instanceof ActiveWakeDisabledError) {
+        return rpcError(id, -32016, "ActiveWakeDisabled", {
+          task_id: error.taskId,
+          context_id: error.contextId,
+          persisted: true,
+          wake_delivery: "disabled",
+          detail:
+            "The inbound A2A message was persisted, but active ChatGPT wake delivery is disabled. Enable it with a2a_set_wake_enabled before retrying a wake-dependent message.",
+        });
+      }
       return rpcError(id, -32602, error instanceof Error ? error.message : String(error));
     }
   }
@@ -91,8 +101,18 @@ export class InboundA2AServer {
 
     // Delivery is intentionally bounded by the EventManager retry policy. The
     // task exists before delivery starts, so the sender can recover with GetTask.
-    await this.events.emitInboundMessage(task);
-    return { task: toA2ATask(task) };
+    const delivery = await this.events.emitInboundMessage(task);
+    if (!delivery.wakeEnabled) {
+      throw new ActiveWakeDisabledError(task.id, task.contextId);
+    }
+    return {
+      task: toA2ATask(task),
+      wakeDelivery: {
+        status: "enabled",
+        matchedSubscriptions: delivery.matched,
+        deliveredSubscriptions: delivery.delivered,
+      },
+    };
   }
 
   private async getTask(params: unknown): Promise<Record<string, unknown>> {
@@ -133,12 +153,30 @@ export class InboundA2AServer {
   }
 }
 
+class ActiveWakeDisabledError extends Error {
+  constructor(
+    readonly taskId: string,
+    readonly contextId: string,
+  ) {
+    super("Active ChatGPT wake delivery is disabled");
+  }
+}
+
 class TaskNotFoundError extends Error {
   constructor(id: string) {
     super(`Task not found: ${id}`);
   }
 }
 
-function rpcError(id: string | number | null, code: number, message: string): Record<string, unknown> {
-  return { jsonrpc: "2.0", id, error: { code, message } };
+function rpcError(
+  id: string | number | null,
+  code: number,
+  message: string,
+  data?: Record<string, unknown>,
+): Record<string, unknown> {
+  return {
+    jsonrpc: "2.0",
+    id,
+    error: { code, message, ...(data ? { data } : {}) },
+  };
 }

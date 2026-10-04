@@ -1,4 +1,3 @@
-[Reading 155 lines from start (total: 155 lines, 0 remaining)]
 
 # Hermes Agent integration
 
@@ -156,7 +155,6 @@ http://127.0.0.1:8931/mcp
 
 Keep the tunnel runtime supervised. Do not reuse an existing tunnel by changing its local MCP target if that tunnel already backs another ChatGPT plugin; create a separate tunnel for this bridge.
 
-[executed on device: Hermes-1.local (be49440c-1576-4e45-88f2-3b9f6aab1034)]
 
 ## 8. Active ChatGPT wake is opt-in
 
@@ -173,3 +171,15 @@ Subscriptions may remain configured while wake is OFF. Toggle it at runtime with
 - `a2a_set_wake_enabled`
 
 The setting persists across restarts and applies only to future inbound messages.
+
+When wake is OFF, inbound A2A `SendMessage` does **not** fail silently. The bridge persists the task, then returns:
+
+```text
+JSON-RPC code: -32016
+message: ActiveWakeDisabled
+data.persisted: true
+data.wake_delivery: disabled
+data.task_id: <persisted inbound task>
+```
+
+This makes configuration tests and remote-agent diagnostics distinguish an intentional OFF state from missing subscriptions, callback failures, or transport errors.

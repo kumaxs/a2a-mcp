@@ -10,7 +10,45 @@ afterEach(async () => {
 });
 
 describe("bidirectional bridge", () => {
-  it("round-trips an inbound A2A task through an MCP reply", async () => {
+  it("reports ActiveWakeDisabled clearly while preserving the inbound task", async () => {
+    const dataDir = await mkdtemp(path.join(os.tmpdir(), "a2a-mcp-integration-"));
+    cleanups.push(() => rm(dataDir, { recursive: true, force: true }));
+
+    const config: BridgeConfig = {
+      host: "127.0.0.1",
+      port: 0,
+      dataDir,
+      agents: {},
+      inboundPeerTokens: {},
+      subscriptionTtlMs: 60_000,
+    };
+    const bridge = await startBridge(config);
+    cleanups.push(() => bridge.close());
+
+    const envelope = await rawRpc(`${bridge.url}/a2a`, "blocked-1", "SendMessage", {
+      message: {
+        messageId: "blocked-m1",
+        role: "ROLE_USER",
+        parts: [{ text: "wake ChatGPT", mediaType: "text/plain" }],
+      },
+    });
+    expect(envelope.error).toMatchObject({
+      code: -32016,
+      message: "ActiveWakeDisabled",
+      data: {
+        persisted: true,
+        wake_delivery: "disabled",
+      },
+    });
+    const blockedTaskId = envelope.error.data.task_id as string;
+    expect(blockedTaskId).toBeTruthy();
+
+    const persisted = await rpc(`${bridge.url}/a2a`, "blocked-get-1", "GetTask", { id: blockedTaskId });
+    expect((persisted as any).status.state).toBe("TASK_STATE_SUBMITTED");
+    expect((persisted as any).history[0].parts[0].text).toBe("wake ChatGPT");
+  });
+
+  it("round-trips an inbound A2A task through an MCP reply when wake is enabled", async () => {
     const dataDir = await mkdtemp(path.join(os.tmpdir(), "a2a-mcp-integration-"));
     cleanups.push(() => rm(dataDir, { recursive: true, force: true }));
 
@@ -27,16 +65,6 @@ describe("bidirectional bridge", () => {
 
     const card = await fetch(`${bridge.url}/.well-known/agent-card.json`).then((r) => r.json()) as any;
     expect(card.supportedInterfaces[0].protocolVersion).toBe("1.0");
-
-    const sent = await rpc(`${bridge.url}/a2a`, "send-1", "SendMessage", {
-      message: {
-        messageId: "m1",
-        role: "ROLE_USER",
-        parts: [{ text: "hello ChatGPT", mediaType: "text/plain" }],
-      },
-    });
-    const taskId = (sent as any).task.id as string;
-    expect((sent as any).task.status.state).toBe("TASK_STATE_SUBMITTED");
 
     const discover = await modernMcp(`${bridge.url}/mcp`, "server/discover", {}, 2);
     expect((discover as any).capabilities.events).toEqual({});
@@ -62,6 +90,17 @@ describe("bidirectional bridge", () => {
     );
     expect((wakeEnabled as any).structuredContent.enabled).toBe(true);
 
+    const sent = await rpc(`${bridge.url}/a2a`, "send-1", "SendMessage", {
+      message: {
+        messageId: "m1",
+        role: "ROLE_USER",
+        parts: [{ text: "hello ChatGPT", mediaType: "text/plain" }],
+      },
+    });
+    const taskId = (sent as any).task.id as string;
+    expect((sent as any).task.status.state).toBe("TASK_STATE_SUBMITTED");
+    expect((sent as any).wakeDelivery.status).toBe("enabled");
+
     const reply = await modernMcp(
       `${bridge.url}/mcp`,
       "tools/call",
@@ -80,13 +119,22 @@ describe("bidirectional bridge", () => {
   });
 });
 
-async function rpc(url: string, id: string, method: string, params: unknown): Promise<unknown> {
+async function rawRpc(
+  url: string,
+  id: string,
+  method: string,
+  params: unknown,
+): Promise<any> {
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json", "A2A-Version": "1.0" },
     body: JSON.stringify({ jsonrpc: "2.0", id, method, params }),
   });
-  const envelope = (await response.json()) as any;
+  return response.json();
+}
+
+async function rpc(url: string, id: string, method: string, params: unknown): Promise<unknown> {
+  const envelope = await rawRpc(url, id, method, params);
   if (envelope.error) throw new Error(JSON.stringify(envelope.error));
   return envelope.result;
 }
