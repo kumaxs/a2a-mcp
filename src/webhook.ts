@@ -2,6 +2,9 @@ import dns from "node:dns/promises";
 import https from "node:https";
 import net from "node:net";
 
+const webhookAgentOptions: https.AgentOptions & { proxyEnv: NodeJS.ProcessEnv } = { proxyEnv: process.env };
+const webhookAgent = new https.Agent(webhookAgentOptions);
+
 export interface HttpResult {
   status: number;
   body: string;
@@ -44,7 +47,10 @@ export async function safeHttpsPost(
     const request = https.request(
       {
         protocol: "https:",
-        hostname: target.url.hostname,
+        // Connect (or proxy CONNECT) to the validated IP; retain the original TLS and HTTP identity.
+        hostname: target.address,
+        family: target.family,
+        agent: webhookAgent,
         port: target.url.port ? Number(target.url.port) : 443,
         path: `${target.url.pathname}${target.url.search}`,
         method: "POST",
@@ -52,11 +58,9 @@ export async function safeHttpsPost(
         headers: {
           "Content-Length": Buffer.byteLength(body),
           ...headers,
+          Host: target.url.host,
         },
         timeout: timeoutMs,
-        lookup: ((_hostname: string, _options: unknown, callback: (err: NodeJS.ErrnoException | null, address: string, family: number) => void) => {
-          callback(null, target.address, target.family);
-        }) as any,
       },
       (response) => {
         const chunks: Buffer[] = [];

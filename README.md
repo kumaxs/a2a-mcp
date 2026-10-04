@@ -85,7 +85,7 @@ Its payload contains `task_id`, `context_id`, `sender`, `text`, and `received_at
 
 ## Install
 
-Requires Node.js 20+.
+Requires Node.js 22.21+ (22.x) or 24.5+, for built-in HTTPS proxy support.
 
 ```bash
 git clone https://github.com/kumaxs/a2a-mcp.git
@@ -121,6 +121,7 @@ Configuration is intentionally environment-variable based.
 | `A2A_MCP_BEARER_TOKEN` | Optional MCP bearer token | unset |
 | `A2A_MCP_INBOUND_PEER_TOKENS` | JSON map of A2A peer name → bearer token | `{}` |
 | `A2A_MCP_SUBSCRIPTION_TTL_MS` | Maximum event subscription lifetime | 7 days |
+| `HTTPS_PROXY` / `https_proxy` | Optional trusted HTTP(S) proxy for MCP callback verification and delivery | unset |
 
 Example outbound Hermes configuration:
 

@@ -13,6 +13,7 @@ afterEach(async () => {
 describe("bidirectional bridge", () => {
   it("records subscription failures without logging callback credentials or arguments", async () => {
     const logs = vi.spyOn(console, "info").mockImplementation(() => {});
+    const warnings = vi.spyOn(console, "warn").mockImplementation(() => {});
     const dataDir = await mkdtemp(path.join(os.tmpdir(), "a2a-mcp-diagnostics-"));
     cleanups.push(() => rm(dataDir, { recursive: true, force: true }));
     const bridge = await startBridge({
@@ -25,7 +26,7 @@ describe("bidirectional bridge", () => {
       name: "a2a.message.received", arguments: { sender: "private-peer" },
       delivery: { mode: "webhook", url: callback, secret },
     }, 31)).rejects.toThrow("CallbackEndpointError");
-    const text = logs.mock.calls.map(([line]) => String(line)).join("\n");
+    const text = [...logs.mock.calls, ...warnings.mock.calls].map(([line]) => String(line)).join("\n");
     expect(text).toContain('"event":"mcp.request"');
     expect(text).toContain('"method":"events/subscribe"');
     expect(text).toContain('"errorCode":-32015');

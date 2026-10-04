@@ -4,7 +4,7 @@
   "description": "Bidirectional A2A ↔ MCP bridge with MCP Events for ChatGPT",
   "license": "Apache-2.0",
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": { "node": "^22.21.0 || >=24.5.0" },
   "bin": { "a2a-mcp": "dist/cli.js" },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

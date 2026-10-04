@@ -124,7 +124,11 @@ export class EventManager {
     const args = params.arguments ?? {};
     const id = this.subscriptionId(params.name, args, params.delivery.url);
     const refreshBefore = this.computeRefreshBefore(params.ttlMs);
-    await this.verifyCallback(id, params.delivery.url, params.delivery.secret);
+    try {
+      await this.verifyCallback(id, params.delivery.url, params.delivery.secret);
+    } catch (error) {
+      throw new Error(`Callback verification failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
 
     const now = new Date().toISOString();
     const record: EventSubscription = {

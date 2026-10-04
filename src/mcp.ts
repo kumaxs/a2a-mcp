@@ -212,6 +212,13 @@ function registerEvents(mcp: McpServer, events: EventManager): void {
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
+        const safeMessage = message
+          .split(params.delivery.secret).join("[redacted]")
+          .split(params.delivery.url).join("[callback]")
+          .replace(/https?:\/\/[^\s"']+/g, "[url]");
+        console.warn(JSON.stringify({
+          at: new Date().toISOString(), event: "mcp.subscription.error", message: safeMessage.slice(0, 500),
+        }));
         const callbackFailure =
           message.toLowerCase().includes("callback") ||
           message.toLowerCase().includes("webhook") ||
@@ -219,7 +226,7 @@ function registerEvents(mcp: McpServer, events: EventManager): void {
           message.toLowerCase().includes("https");
         if (callbackFailure) {
           throw new ProtocolError(-32015, "CallbackEndpointError", {
-            reason: message.toLowerCase().includes("timeout") ? "timeout" : "challenge_failed",
+            reason: /timeout|timed out/i.test(message) ? "timeout" : "challenge_failed",
             detail: message,
           });
         }
