@@ -18,6 +18,8 @@ The design goal here is narrower: **one small bridge, no agent runtime, no backg
 
 ## Architecture
 
+For a tested Hermes deployment, see [Hermes Agent integration](docs/hermes.md).
+
 ### ChatGPT → A2A agent
 
 ```text
