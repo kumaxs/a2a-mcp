@@ -4,7 +4,7 @@
   "repository": "kumaxs/a2a-mcp",
   "branch": "main",
   "relative_path": "a2a-mcp/",
-  "template_version": "cowork-v1.13",
+  "template_version": "cowork-v1.14",
   "goal": "Maintain the existing small bidirectional A2A ↔ MCP bridge so ChatGPT and Hermes can communicate through MCP tools and MCP Events, preserving durable task correlation, OpenAI Secure MCP Tunnel/plugin integration, security boundaries, and the project’s minimal architecture.",
   "created_by": "ChatGPT cowork adoption 2026-10-04"
 }
