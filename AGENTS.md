@@ -1,7 +1,7 @@
 <!-- COWORK:BEGIN -->
 # cowork 协作约定
 
-规则版本：cowork-v1.15。主源为 kumaxs/cowork-kit 的 RULES.md；项目使用已安装快照，不在普通任务中静默升级。
+规则版本：cowork-v1.14。主源为 kumaxs/cowork-kit 的 RULES.md；项目使用已安装快照，不在普通任务中静默升级。
 
 ## 目标与实现
 
@@ -36,8 +36,7 @@ ChatGPT 以 GitHub 连接器为仓库读写/commit 主通道；Commander 用于�
 
 只有接入、升级或批量整改时，读取固定 cowork-kit commit 的 docs/PROJECT_LIFECYCLE.md：新项目用 new，已有独立仓库用 adopt，已有 .cowork.json 用 apply；批量升级须有对应授权。不覆盖项目业务规则，bootstrap 仅实际变化时在聊天完整交付。
 只有涉及 Hermes Lab 实验时，才通过 PROJECTS.md 定位 hermes-lab-team，固定其 commit 并读取 SOURCE_PROJECT_GUIDE.md；不在源项目重建 Lab 流程。
-资料库能力：仅在需要将论文加入 Zotero 或将笔记、手写照片投递到 Obsidian 时，按需读取 https://github.com/kumaxs/resource-library/blob/main/RESOURCE_PROTOCOL.md 的对应操作；其他任务不加载。
 持续推进到用户目标完成或出现需要用户输入的具体阻碍。结束时简要报告结果、实际验证、未完成事项及提交位置；只读问答不为凑流程写状态或造文档。
 
-快照：cowork-v1.15 / f147cf79a7f4。冲突时本受管区块优先于旧版协作流程；不覆盖用户的具体任务和既有科学角色。
+快照：cowork-v1.14 / bd3909d28363。冲突时本受管区块优先于旧版协作流程；不覆盖用户的具体任务和既有科学角色。
 <!-- COWORK:END -->
