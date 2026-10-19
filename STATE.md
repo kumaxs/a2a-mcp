@@ -13,3 +13,12 @@ ChatGPT Project Instructions：本次首次生成 `CHATGPT_PROJECT_INSTRUCTIONS.
 业务功能分支是否何时并入 main 属于原项目后续发布决策，不在本次 cowork 接入中擅自处理。
 
 未特指格式时，笔记、进度、交接和其他记录保存为 Markdown（.md）；代码和必要机器配置保留原生格式。
+
+## 2026-10-19：ChatGPT A2A 连接目标切换
+
+- Hermes-1 已创建独立 Hermes profile：展示名 `A2Agent`，规范化 ID `a2agent`，配置位于 `~/.hermes/profiles/a2agent/`。使用独立会话和 A2A 双向凭证，仅迁移所需的 `commandcode` 推理凭证，不复制 dev 的 Bot 凭证、会话和业务状态。
+- 新 profile 的 A2A Agent Card：`http://127.0.0.1:9901/.well-known/agent-card.json`，名称 `A2Agent`。保留原 `dev` profile 及其独立 Gateway（`9900`）。新 Gateway 使用 Hermes 自带 launchd 服务 `ai.hermes.gateway-a2agent`，配置 `gateway.standalone: true`，避免改变既有 Gateway/多 profile 的部署。
+- ChatGPT 的现有 `a2a-mcp` 桥接服务（`8931`，原 Secure MCP Tunnel 保持不变）已把直接注册目标 `hermes-dev` 替换为 `A2Agent`；`a2a_list_agents` 仅返回 `A2Agent`。其他 Hermes profiles 和 school 的 Agent 未自动注册。
+- 端到端验证：ChatGPT 使用 `a2a_send_message(agent="A2Agent")` 得到 `TASK_STATE_COMPLETED`，且精确回复 `A2AGENT_OK`，不包含推理过程或工具进度。旧 `hermes-dev` 别名不再可查。Bridge / Gateway 正常监听，旧 dev Agent Card 仍可访问。
+- Bridge 的 active wake 仍为 `OFF`（本地 `wake-state.json` 的 `enabled=false`）。桥接运行凭证仅存放于本机 owner-only 环境文件；切换前运行文件已私有备份，不入 Git。仓库业务代码、`feat/bidirectional-mcp-events` 分支及原 dev 业务配置未修改。
+- 现有 dev/fron 与 default 的消息凭证重复使全局 multiplex Gateway 迁移需要另行评估；本次只启用独立 profile 兼容方式，不在本任务变更现有 Bot。
