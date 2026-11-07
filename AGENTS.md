@@ -1,7 +1,7 @@
 <!-- COWORK:BEGIN -->
 # cowork 协作约定
 
-规则版本：cowork-v1.14。主源为 kumaxs/cowork-kit 的 RULES.md；项目使用已安装快照，不在普通任务中静默升级。
+规则版本：cowork-v1.16。主源为 kumaxs/cowork-kit 的 RULES.md；项目使用已安装快照，不在普通任务中静默升级。
 
 ## 目标与实现
 
@@ -30,7 +30,7 @@ main 是稳定集成线。任何修改、补丁和版本更新先从最新 main 
 ## Agent 工具归属
 
 Codex/Hermes 使用当前会话原生文件、Git、terminal/shell、SSH；除用户明确点名外，不转用或等待 MCPX/Commander。
-ChatGPT 以 GitHub 连接器为仓库读写/commit 主通道；Commander 用于必须依赖机器的执行和未覆盖操作，MCPX 只作确需本地工作区时的受限后备。工具切换不扩大权限，不绕过平台确认。
+ChatGPT 以 GitHub 连接器为仓库读写/commit 主通道；Cowork MCPX 是本地/远端文件、搜索、命令与进程操作的主通道，Remote Desktop Commander 保留为未覆盖能力或故障时的后备。设备 ID 按当前提供方的 list_devices 发现，不跨提供方复用。定时任务保留原身份、排班、历史与业务路径，按任务逐项切换并以自然排班验收；尚未迁移的任务沿用原明确指定通道，暂停任务保持暂停。写入或命令结果未知先核实，不切换通道重复执行；平台明确拒绝的动作不得换通道重试。工具切换不扩大权限，不绕过平台确认。
 
 ## 按需操作与交付
 
@@ -38,5 +38,5 @@ ChatGPT 以 GitHub 连接器为仓库读写/commit 主通道；Commander 用于�
 只有涉及 Hermes Lab 实验时，才通过 PROJECTS.md 定位 hermes-lab-team，固定其 commit 并读取 SOURCE_PROJECT_GUIDE.md；不在源项目重建 Lab 流程。
 持续推进到用户目标完成或出现需要用户输入的具体阻碍。结束时简要报告结果、实际验证、未完成事项及提交位置；只读问答不为凑流程写状态或造文档。
 
-快照：cowork-v1.14 / bd3909d28363。冲突时本受管区块优先于旧版协作流程；不覆盖用户的具体任务和既有科学角色。
+快照：cowork-v1.16 / 6d1927f23a39。冲突时本受管区块优先于旧版协作流程；不覆盖用户的具体任务和既有科学角色。
 <!-- COWORK:END -->
